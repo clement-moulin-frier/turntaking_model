@@ -20,7 +20,7 @@ class Experiment(Observer):
         Observer.__init__(self)
 
         for ag in agents:
-            for topic in ["motor", "presence", "td_error", "activation", "weights"]:
+            for topic in ["motor", "presence", "td_error", "activation", "weights", "reward"]:
                 ag.subscribe(topic, self)
         self.ags = agents
         self.n_ag = len(agents)
@@ -100,27 +100,5 @@ class Experiment(Observer):
         for test in testcases:
             self.log.add('testcases', test)
 
-    @classmethod
-    def from_settings(cls, settings):
-        """ Creates a :class:`~explauto.experiment.experiment.Experiment` object thanks to the given settings. """
-        env_cls, env_configs, _ = environments[settings.environment]
-        config = env_configs[settings.environment_config]
 
-        env = env_cls(**config)
-
-        im_cls, im_configs = interest_models[settings.interest_model]
-        sm_cls, sm_configs = sensorimotor_models[settings.sensorimotor_model]
-
-        babbling = settings.babbling_mode
-        if babbling not in ['goal', 'motor']:
-            raise ValueError("babbling argument must be in ['goal', 'motor']")
-
-        expl_dims = env.conf.m_dims if (babbling == 'motor') else env.conf.s_dims
-        inf_dims = env.conf.s_dims if (babbling == 'motor') else env.conf.m_dims
-
-        agent = Agent.from_classes(im_cls, im_configs[settings.interest_model_config], expl_dims,
-                      sm_cls, sm_configs[settings.sensorimotor_model_config], inf_dims,
-                      env.conf.m_mins, env.conf.m_maxs, env.conf.s_mins, env.conf.s_maxs)
-
-        return cls(env, agent)
 
