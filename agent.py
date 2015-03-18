@@ -1,9 +1,12 @@
 from copy import deepcopy
 from numpy.linalg import norm
+from sklearn.mixture import GMM
 from numpy.random import rand, randn
-from explauto.utils.observer import Observable
 from sklearn.mixture import sample_gaussian
+from explauto.utils.observer import Observable
 from numpy import array, ones, hstack, tanh, argmax, product, zeros, sign
+
+
 
 
 class Agent(Observable):
@@ -23,17 +26,27 @@ class Agent(Observable):
         self.lr_alpha = 0.1 #99  # decaying lr(t) = t ** (-alpha) according to Damas' IML algorithm
                               # Check if we have sum_t lr(t) == inf and sum_t lr(t)**2 < inf (Eq 21, 22 in Grondman et al.IEEE SMC)
         # self.topics = ["motor", "presence", "td_error", "activation", "weights"]
+        self.drive_base = 1.
+        self.aud_act = 0.
+        self.adapt = True
         self.learn = True
         self.force_voc_each = 0
+        self.force_voc_seq = []
+        self.last_voc = 0
 
     def produce(self):
-        self.activation = self.weights.dot(self.presence.T)
+        self.activation = self.drive_base - 2. * self.aud_act
+        if self.adapt:
+            self.activation = self.weights.dot(self.presence.T)
         self.activation = (1. + tanh(self.activation * 1.)) / 2.  # in [0, 1]
         if self.force_voc_each:
             if not self.t % self.force_voc_each:
                 self.activation = 1.
             else:
                 self.activation = 0.
+        if self.force_voc_seq:
+            self.activation = 10. if self.force_voc_seq[self.t % len(self.force_voc_seq)] else -10.
+
         if self.activation > rand():
             self.m = sample_gaussian(self.mean, self.covar)
         else:
@@ -48,6 +61,8 @@ class Agent(Observable):
         bool_ags = [ss is not None for ss in s]
         voc_ag_id = [i for i, elem in enumerate(bool_ags) if elem]
         n_voc_ag = len(voc_ag_id)
+        if n_voc_ag >0:
+            self.last_voc = self.t
 
         prev_presence = deepcopy(self.presence)
         if n_voc_ag == 1:
@@ -56,22 +71,23 @@ class Agent(Observable):
             non_voc = []
             for i in range(self.n_ag):
                 if i == ag_id:
-                    self.presence[i + 1] += 1.
+                    self.presence[i + 1] += 0.3
                     self.last_time_identified[i] = deepcopy(self.t)
                 else:
-                    if self.t - self.last_time_identified[i] >= 5:
-                        self.presence[i + 1] -= 0.1
+                    if self.t - self.last_time_identified[i] >= 0:
+                        self.presence[i + 1] -= 0.1 * self.presence[i + 1]
                     non_voc.append(i)
         else:
             for i in range(self.n_ag):
-                if self.t - self.last_time_identified[i] >= 5:
-                    self.presence[i + 1] -= 0.1
+                if self.t - self.last_time_identified[i] >= 0:
+                    self.presence[i + 1] -= 0.1 * self.presence[i + 1]
 
         self.presence[self.presence > 1] = 1
         self.presence[self.presence < 0] = 0
 
+        self.aud_act = float(self.t - self.last_voc < 5)
 
-        reward = product(self.presence[1:]) - 0.5 * (0 if self.m is None else 1)
+        reward = product(self.presence[1:]) #  - 0.5 * (0 if self.m is None else 1)
         if reward <0: reward = 0
 
         value_prev_state = self.value_weights.dot(prev_presence.T)
@@ -104,4 +120,5 @@ class Agent(Observable):
         self.emit("td_error", (self.id, td_error))
         self.emit("reward", (self.id, reward))
         self.emit("weights", (self.id, self.weights))
+        self.emit("aud_act", (self.id, self.aud_act))
 

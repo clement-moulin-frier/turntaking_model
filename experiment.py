@@ -20,7 +20,7 @@ class Experiment(Observer):
         Observer.__init__(self)
 
         for ag in agents:
-            for topic in ["motor", "presence", "td_error", "activation", "weights", "reward"]:
+            for topic in ["motor", "presence", "td_error", "activation", "weights", "reward", "aud_act"]:
                 ag.subscribe(topic, self)
         self.ags = agents
         self.n_ag = len(agents)
