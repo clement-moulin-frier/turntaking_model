@@ -1,18 +1,24 @@
 from copy import deepcopy
+from collections import deque
 from numpy.linalg import norm
 from sklearn.mixture import GMM
 from numpy.random import rand, randn
 from sklearn.mixture import sample_gaussian
 from explauto.utils.observer import Observable
-from numpy import array, ones, hstack, tanh, argmax, product, zeros, sign
+from numpy import array, ones, hstack, tanh, argmax, product, zeros, sign, mean
 
 
 class FeatureExtraction(object):
     def __init__(self):
-        pass
+        self.amp_hist = deque(maxlen=1)
 
     def features(self, signal):
         return signal
+
+    def amplitude(self, signal):
+        amp = 1.0 if any([s is not None for s in signal]) else 0.
+        self.amp_hist.append(amp)
+        return mean(self.amp_hist)
 
 
 class AgentIndentification(object):
@@ -39,6 +45,7 @@ class PresenceEstimation(object):
         self.n_ag = n_ag
         self.presence = (1. / n_ag) * ones(n_ag)
         self.last_time_identified = [0] * n_ag
+        self.onset = 4
         self.t = 0
 
     def update(self, identification):
@@ -49,12 +56,12 @@ class PresenceEstimation(object):
                     self.presence[i] += 0.3
                     self.last_time_identified[i] = deepcopy(self.t)
                 else:
-                    if self.t - self.last_time_identified[i] >= 0:
+                    if self.t - self.last_time_identified[i] >= self.onset:
                         self.presence[i] -= 0.1 * self.presence[i]
                     non_voc.append(i)
         else:
             for i in range(self.n_ag):
-                if self.t - self.last_time_identified[i] >= 0:
+                if self.t - self.last_time_identified[i] >= self.onset:
                     self.presence[i] -= 0.1 * self.presence[i]
 
         self.presence[self.presence > 1] = 1
@@ -103,14 +110,84 @@ class MotorExecution(object):
     def __init__(self, ag_voc_param):
         self.activation_fun = lambda a: (1. + tanh(a * 1.)) / 2.
         self.mean, self.covar = array(ag_voc_param[1]), array(ag_voc_param[2])
+        self.m_hist = deque([0] * 5, maxlen=5)
+        self.t_last_voc = 0
+        self.t = 0
 
     def execute(self, activation):
         self.activation = self.activation_fun(activation)
-        if self.activation > rand():
+        if self.t >= self.t_last_voc + 0 and self.activation > rand():
             self.m = sample_gaussian(self.mean, self.covar)
+            self.t_last_voc = deepcopy(self.t)
         else:
             self.m = None
+        self.t += 1
         return self.m
+
+
+class Reflex(object):
+    def __init__(self):
+        self.t = 0
+        self.t_last_amp = 0.
+        self.homeo_range = [0.2, 0.8]
+        self.level = 0.5
+        self.last_act = 0
+        self.start_stop = 0
+
+    def activation(self, amp):
+
+        # return 0.
+
+        # if amp > 0.5:
+        #     self.start_stop = deepcopy(self.t)
+        # if self.t > self.start_stop + 3:
+        #     act = 1.
+        # else:
+        #     act = -1.
+        # self.t += 1
+        # return act
+
+
+        if amp > 0.1:
+            self.level += 0.3
+        else:
+            self.level -= 0.1
+
+        if self.level < self.homeo_range[0]:
+            self.last_act = 1.
+            return 1.
+        if self.level > self.homeo_range[1]:
+            self.last_act = -3.
+            return -3.
+        return self.last_act
+
+        return ((1. - min(state)) - 0.5) * 2.
+
+        if min(state) <= 0.5:
+            return 1
+        else:
+            return -1.
+
+        if amp > 0.5:
+            self.t_last_amp = deepcopy(self.t)
+        if self.t_last_amp > self.t - 5:
+            act = -1.
+        else:
+            act = 0.
+        self.t += 1
+        return act
+        # if amp >= 0.6:
+        #     return -2.
+        # else:
+        #     return 2.
+        # if amp <= 0.3:
+        #     return 2.
+        # elif amp < 0.7:
+        #     return 0.
+        # else:
+        #     return -2.
+
+        # return -2. if amp > 0.6 else 2.
 
 
 class ModularAgent(Observable):
@@ -124,11 +201,21 @@ class ModularAgent(Observable):
         self.pres_estimator = PresenceEstimation(n_ag)
         self.val_estimator = ValueEstimation(n_ag)
         self.decision_maker = ActionSelection(n_ag)
+        self.reflex = Reflex()
         self.motor = MotorExecution(self.ag_voc_param)
+        self.amp = 0
+        self.comfort = True
 
     def produce(self):
         state = self.pres_estimator.presence
-        activation = self.decision_maker.decide(state)
+        if min(state) < 0.7:
+            self.comfort = False
+            activation = self.decision_maker.decide(state)
+            activation += 1.
+        else:
+            self.comfort = True
+            activation = -3.
+        # activation += self.reflex.activation(self.amp)
         self.m = self.motor.execute(activation)
         self.emit("motor", (self.id, self.m))
         self.emit("activation", (self.id, self.motor.activation))
@@ -136,14 +223,17 @@ class ModularAgent(Observable):
 
     def perceive(self, signal):
         s = self.feat_extractor.features(signal)
+        self.amp = self.feat_extractor.amplitude(signal)
         percept = self.identificator.identify(s)
         self.pres_estimator.update(percept)
-        self.val_estimator.update(self.pres_estimator.presence)
-        self.decision_maker.update(self.val_estimator.td_error, self.m)
+        if not self.comfort:
+            self.val_estimator.update(self.pres_estimator.presence)
+            self.decision_maker.update(self.val_estimator.td_error, self.m)
         self.emit("presence", (self.id, deepcopy(self.pres_estimator.presence)))
         self.emit("td_error", (self.id, self.val_estimator.td_error))
         self.emit("reward", (self.id, self.val_estimator.reward))
         self.emit("weights", (self.id, self.decision_maker.weights))
+        self.emit("amp", (self.id, self.amp))
 
 
 
