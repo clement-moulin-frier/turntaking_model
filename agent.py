@@ -2,7 +2,7 @@ from copy import deepcopy
 from collections import deque
 from numpy.linalg import norm
 from sklearn.mixture import GMM
-from numpy.random import rand, randn
+from numpy.random import rand, randn, seed
 from sklearn.mixture import sample_gaussian
 from explauto.utils.observer import Observable
 from numpy import array, ones, hstack, tanh, argmax, product, zeros, sign, mean
@@ -45,7 +45,7 @@ class PresenceEstimation(object):
         self.n_ag = n_ag
         self.presence = (1. / n_ag) * ones(n_ag)
         self.last_time_identified = [0] * n_ag
-        self.onset = 4
+        self.onset = 7
         self.t = 0
 
     def update(self, identification):
@@ -53,7 +53,7 @@ class PresenceEstimation(object):
             non_voc = []
             for i in range(self.n_ag):
                 if i == identification:
-                    self.presence[i] += 0.3
+                    self.presence[i] += 1.
                     self.last_time_identified[i] = deepcopy(self.t)
                 else:
                     if self.t - self.last_time_identified[i] >= self.onset:
@@ -64,8 +64,8 @@ class PresenceEstimation(object):
                 if self.t - self.last_time_identified[i] >= self.onset:
                     self.presence[i] -= 0.1 * self.presence[i]
 
-        self.presence[self.presence > 1] = 1
-        self.presence[self.presence < 0] = 0
+        self.presence[self.presence > 1] = 1.
+        self.presence[self.presence < 0.] = 0.
         self.t += 1
 
 
@@ -76,11 +76,16 @@ class ValueEstimation(object):
         self.discount = discount
         self.weights = self.lr * randn(ndims + 1)
         self.prev_state = (1. / ndims) * ones(ndims)
+        self.n_ag_ok = ndims
         self.t = 0
+        self.td_error = 0.
+        self.reward = 0.
 
     def update(self, state):
         self.lr = 0.1 * (self.t + 1) ** (- self.lr_alpha)
         self.reward = product(state)
+        #self.reward = sum(state >= 0.7) - self.n_ag_ok # product(state)
+        #self.n_ag_ok = sum(state >= 0.7)
         value_current_state = self.weights.dot(hstack((1., state)).T)
         self.td_error = self.reward + self.discount * value_current_state - self.weights.dot(hstack((1., self.prev_state)).T)
         self.weights += self.lr * self.td_error * hstack((1., self.prev_state))
@@ -89,8 +94,8 @@ class ValueEstimation(object):
 
 
 class ActionSelection(object):
-    def __init__(self, ndims):
-        self.lr = 0.05  # learning rate
+    def __init__(self, ndims, lr=0.05):
+        self.lr = lr  # learning rate
         self.lr_alpha = 0.1
         self.weights = self.lr * randn(ndims + 1)
         self.t = 0
@@ -132,20 +137,22 @@ class Reflex(object):
         self.homeo_range = [0.2, 0.8]
         self.level = 0.5
         self.last_act = 0
+        self.t_last_call = 0 
         self.start_stop = 0
+        self.inhib_act = -30.
 
     def activation(self, amp):
 
-        # return 0.
+        # return - 0.5
 
-        # if amp > 0.5:
-        #     self.start_stop = deepcopy(self.t)
-        # if self.t > self.start_stop + 3:
-        #     act = 1.
-        # else:
-        #     act = -1.
-        # self.t += 1
-        # return act
+        if amp > 0.5:
+            self.start_stop = deepcopy(self.t)
+        if self.t >= self.start_stop + 4:
+            act = 0.
+        else:
+            act = self.inhib_act
+        self.t += 1
+        return act
 
 
         if amp > 0.1:
@@ -193,29 +200,31 @@ class Reflex(object):
 class ModularAgent(Observable):
     def __init__(self, ag_voc_params, id):
         Observable.__init__(self)
+        seed()
         self.id = id
         n_ag = len(ag_voc_params)
         self.ag_voc_param = ag_voc_params[id]
         self.feat_extractor = FeatureExtraction()
         self.identificator = AgentIndentification(ag_voc_params)
         self.pres_estimator = PresenceEstimation(n_ag)
-        self.val_estimator = ValueEstimation(n_ag)
-        self.decision_maker = ActionSelection(n_ag)
+        self.val_estimator = ValueEstimation(n_ag, lr=0.05)
+        self.decision_maker = ActionSelection(n_ag, lr=0.05)
         self.reflex = Reflex()
         self.motor = MotorExecution(self.ag_voc_param)
         self.amp = 0
-        self.comfort = True
+        self.comfort = False
 
     def produce(self):
         state = self.pres_estimator.presence
-        if min(state) < 0.7:
-            self.comfort = False
-            activation = self.decision_maker.decide(state)
-            activation += 1.
-        else:
-            self.comfort = True
-            activation = -3.
-        # activation += self.reflex.activation(self.amp)
+        # if min(state) < 0.7:
+        #     self.comfort = False
+        adapt_act = self.decision_maker.decide(state)
+        #     activation += 0.
+        # else:
+        #     self.comfort = True
+        #     activation = -3.
+        self.reflex_act = self.reflex.activation(self.amp)
+        activation = self.reflex_act + adapt_act
         self.m = self.motor.execute(activation)
         self.emit("motor", (self.id, self.m))
         self.emit("activation", (self.id, self.motor.activation))
@@ -226,7 +235,7 @@ class ModularAgent(Observable):
         self.amp = self.feat_extractor.amplitude(signal)
         percept = self.identificator.identify(s)
         self.pres_estimator.update(percept)
-        if not self.comfort:
+        if self.reflex_act != self.reflex.inhib_act:
             self.val_estimator.update(self.pres_estimator.presence)
             self.decision_maker.update(self.val_estimator.td_error, self.m)
         self.emit("presence", (self.id, deepcopy(self.pres_estimator.presence)))
