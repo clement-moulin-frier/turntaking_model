@@ -207,7 +207,7 @@ class ModularAgent(Observable):
         self.feat_extractor = FeatureExtraction()
         self.identificator = AgentIndentification(ag_voc_params)
         self.pres_estimator = PresenceEstimation(n_ag)
-        self.val_estimator = ValueEstimation(n_ag, lr=0.05)
+        self.val_estimator = ValueEstimation(n_ag, lr=0.05, discount=1.)
         self.decision_maker = ActionSelection(n_ag, lr=0.05)
         self.reflex = Reflex()
         self.motor = MotorExecution(self.ag_voc_param)
