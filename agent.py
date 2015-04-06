@@ -45,7 +45,7 @@ class PresenceEstimation(object):
         self.n_ag = n_ag
         self.presence = (1. / n_ag) * ones(n_ag)
         self.last_time_identified = [0] * n_ag
-        self.onset = 7
+        self.onset = 8
         self.t = 0
 
     def update(self, identification):
@@ -156,48 +156,6 @@ class Reflex(object):
         return act
 
 
-        if amp > 0.1:
-            self.level += 0.3
-        else:
-            self.level -= 0.1
-
-        if self.level < self.homeo_range[0]:
-            self.last_act = 1.
-            return 1.
-        if self.level > self.homeo_range[1]:
-            self.last_act = -3.
-            return -3.
-        return self.last_act
-
-        return ((1. - min(state)) - 0.5) * 2.
-
-        if min(state) <= 0.5:
-            return 1
-        else:
-            return -1.
-
-        if amp > 0.5:
-            self.t_last_amp = deepcopy(self.t)
-        if self.t_last_amp > self.t - 5:
-            act = -1.
-        else:
-            act = 0.
-        self.t += 1
-        return act
-        # if amp >= 0.6:
-        #     return -2.
-        # else:
-        #     return 2.
-        # if amp <= 0.3:
-        #     return 2.
-        # elif amp < 0.7:
-        #     return 0.
-        # else:
-        #     return -2.
-
-        # return -2. if amp > 0.6 else 2.
-
-
 class ModularAgent(Observable):
     def __init__(self, ag_voc_params, id):
         Observable.__init__(self)
@@ -213,13 +171,16 @@ class ModularAgent(Observable):
         self.reflex = Reflex()
         self.motor = MotorExecution(self.ag_voc_param)
         self.amp = 0
-        self.comfort = False
+        self.adapt = True
 
     def produce(self):
         state = self.pres_estimator.presence
         # if min(state) < 0.7:
         #     self.comfort = False
-        adapt_act = self.decision_maker.decide(state)
+        if self.adapt:
+            adapt_act = self.decision_maker.decide(state)
+        else:
+            adapt_act = 0.
         #     activation += 0.
         # else:
         #     self.comfort = True
@@ -227,8 +188,8 @@ class ModularAgent(Observable):
         self.reflex_act = self.reflex.activation(self.amp)
         activation = self.reflex_act + adapt_act
         self.m = self.motor.execute(activation)
-        self.emit("motor", (self.id, self.m))
-        self.emit("activation", (self.id, self.motor.activation))
+        self.emit("motor", (self.id, deepcopy(self.m)))
+        self.emit("activation", (self.id, deepcopy(self.motor.activation)))
         return self.m
 
     def perceive(self, signal):
@@ -236,14 +197,14 @@ class ModularAgent(Observable):
         self.amp = self.feat_extractor.amplitude(signal)
         percept = self.identificator.identify(s)
         self.pres_estimator.update(percept)
-        if self.reflex_act != self.reflex.inhib_act:
+        if self.adapt and self.reflex_act != self.reflex.inhib_act:
             self.val_estimator.update(self.pres_estimator.presence)
             self.decision_maker.update(self.val_estimator.td_error, self.m)
         self.emit("presence", (self.id, deepcopy(self.pres_estimator.presence)))
-        self.emit("td_error", (self.id, self.val_estimator.td_error))
-        self.emit("reward", (self.id, self.val_estimator.reward))
-        self.emit("weights", (self.id, self.decision_maker.weights))
-        self.emit("amp", (self.id, self.amp))
+        self.emit("td_error", (self.id, deepcopy(self.val_estimator.td_error)))
+        self.emit("reward", (self.id, deepcopy(self.val_estimator.reward)))
+        self.emit("weights", (self.id, deepcopy(self.decision_maker.weights)))
+        self.emit("amp", (self.id, deepcopy(self.amp)))
 
 
 

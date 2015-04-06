@@ -86,6 +86,16 @@ class Experiment(Observer):
             topic, (id, msg) = self.notifications.get()
             self.log[id][topic].append(msg)
 
+    def log_array(self, topic, i_ag=None):
+        if i_ag is None:
+            res = []
+            for i in range(self.n_ag):
+                res.append(self.log[i][topic])
+        else:
+            res = self.log[i_ag][topic]
+        return array(res)
+
+
     def evaluate_at(self, eval_at, testcases):
         """ Sets the evaluation interation indices.
 
