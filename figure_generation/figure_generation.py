@@ -55,7 +55,6 @@ class FigureGenerator(object):
             self.ag_legend.append("Agent " + str(i + 1))  
 
     def _post(self, filename):
-        #tight_layout()
         savefig(filename)
 
 
@@ -69,7 +68,6 @@ class Reactive(FigureGenerator):
         self.end = 100
         figure(figsize=(10, 8))
         subplot(211)
-        #print(tile(self.time, (self.expe.n_ag, 1)).T.shape, self.expe.log_array('activation')[:, self.start:self.end].shape)
         plot(tile(self.time, (self.expe.n_ag, 1)).T, self.expe.log_array('activation')[:, self.start:self.end].T, 'o')
         ylabel("Vocalization probability")
         axis([self.start, self.end, -0.1, 1.1])
@@ -86,13 +84,11 @@ class Adaptive(FigureGenerator):
         FigureGenerator.__init__(self, expe, scale=2.)
         self.time_ranges = ((0, 100), (1000, 1100), (10000, 10100))
 
-    # def plot_on_ax(self, ax, data_x, data*plo)
-
     def body(self):
         n_col = 3
         n_row = 4
         n_col_sub = n_col / 3
-        gs = GridSpec(n_row, n_col) #, left=1, right=1)
+        gs = GridSpec(n_row, n_col)
         figure(figsize=(24, 10))
 
         for i, (t_min, t_max) in enumerate(self.time_ranges):
@@ -103,7 +99,7 @@ class Adaptive(FigureGenerator):
                 ylabel("Presence\nestimation")
             axis([t_min, t_max, 0, 1])
             if i == 1:
-                legend(self.ag_legend, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2, mode="expand", borderaxespad=0.)  # bbox_to_anchor=(.6, 1.02, 1., .102), loc=3)
+                legend(self.ag_legend, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2, mode="expand", borderaxespad=0.)
 
             subplot(gs[1, (i * n_col_sub):(i + 1) * n_col_sub])
             plot(tile(range(t_min, t_max), (self.expe.n_ag, 1)).T, self.expe.log_array('activation')[:, t_min:t_max].T, 'o')
@@ -137,10 +133,8 @@ class ActionPolicy(FigureGenerator):
         self.time_steps = [0, 1000, 9000]
 
     def body(self):
-        # sns.set(font_scale=1.5)
-        #sns.set_context("paper", font_scale=1.3)
         figure(figsize=(5.5, 10./3.))
-        n_col_sub = 3 #int(float(n_col - 1) / len(self.time_steps))
+        n_col_sub = 3 
         n_col = n_col_sub * len(self.time_steps) + 1
         n_row = 2
         gs = GridSpec(n_row, n_col)
@@ -152,29 +146,20 @@ class ActionPolicy(FigureGenerator):
                     v0[i0, i1] = self.expe.log[0]['weights'][t].dot(hstack((1., p0, p1)).T)
                     v1[i0, i1] = self.expe.log[1]['weights'][t].dot(hstack((1., p0, p1)).T)
 
-            # pres = array([self.expe.log[0]['presence'][t] for t in range(self.n_runs)])
-
             subplot(gs[0, (i_t * n_col_sub):((i_t + 1) * n_col_sub)])
-            #imshow(v0.T[::-1, :], extent=[0, 1, 0, 1], vmin=-5, vmax=5)
             imshow(self.expe.ags[0].motor.activation_fun(v0.T[::-1, :]), extent=[0, 1, 0, 1], vmin=0, vmax=1)
 
-            #xlabel('P(a1)')
             if i_t == 0:
                 ylabel('P(a2)')
             xticks([0., 0.5, 1.])
             yticks([0., 0.5, 1.])
-            #if i_t == len(self.time_steps) - 1:
-            #    colorbar()
             subplot(gs[1, (i_t * n_col_sub):((i_t + 1) * n_col_sub)])
-            #imshow(v1.T[::-1, :], extent=[0, 1, 0, 1], vmin=-5, vmax=5)
             imshow(self.expe.ags[1].motor.activation_fun(v1.T[::-1, :]), extent=[0, 1, 0, 1], vmin=0, vmax=1)
-            #plot(pres[-40:, 0], pres[-40:, 1])
             xlabel('P(a1)')
             if i_t == 0:
                 ylabel('P(a2)')
             xticks([0., 0.5, 1.])
             yticks([0., 0.5, 1.])
-            #if i_t == len(self.time_steps) - 1:
         colorbar(cax=subplot(gs[:, -1]))
 
         tight_layout(h_pad=0.8, w_pad=0.8)
@@ -194,8 +179,6 @@ class RewardStat(object):
         self.run_means_3ag = array(self.run_means_3ag)
 
     def generate(self, filename):
-        #figure(figsize=(10, 5./3.))
-        sns.set_context("paper", font_scale=2.)
         subplot(211)
         sns.tsplot(self.run_means_2ag, err_style='unit_traces')
         axis([0, self.n_runs_2ag, 0., 1])
@@ -211,6 +194,3 @@ class RewardStat(object):
         tight_layout()
 
         savefig(filename)
-
-if __name__ == "__main__":
-    pass
