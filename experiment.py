@@ -8,15 +8,7 @@ from observer import Observer
 
 class Experiment(Observer):
     def __init__(self, agents):
-        """ This class is used to setup, run and log the results of an experiment.
-
-            :param environment: an environment
-            :type environment: :py:class:`~explauto.environment.environment.Environment`
-
-            :param agent: an agent
-            :type agent: :py:class:`~explauto.environment.agent.Agent`
-
-            """
+        """ This class is used to setup, run and log the results of an experiment. """
         Observer.__init__(self)
 
         for ag in agents:
