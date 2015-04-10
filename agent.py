@@ -4,7 +4,7 @@ from numpy.linalg import norm
 from sklearn.mixture import GMM
 from numpy.random import rand, randn, seed
 from sklearn.mixture import sample_gaussian
-from explauto.utils.observer import Observable
+from observer import Observable
 from numpy import array, ones, hstack, tanh, argmax, product, zeros, sign, mean
 
 

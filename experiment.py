@@ -3,7 +3,7 @@ from copy import copy
 from numpy import hstack, array
 from collections import defaultdict
 
-from explauto.utils.observer import Observer
+from observer import Observer
 
 
 class Experiment(Observer):
@@ -109,6 +109,3 @@ class Experiment(Observer):
         self.evaluation = Evaluation(self.ag, self.env, testcases)
         for test in testcases:
             self.log.add('testcases', test)
-
-
-
