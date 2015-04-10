@@ -5,6 +5,8 @@ This repository contains the source code related to the paper we recently submit
 ## Dependency
 To generate the figures of the paper we used the [seaborn library](http://stanford.edu/~mwaskom/software/seaborn/) that you need to install on your system  as well if you want to re-generate them.
 
+We also use one function from the [sklearn library](http://scikit-learn.org/stable/) that you need to install too.
+
 ## Ipython notebook tutorial
 
 How to use this code is explained in this [IPython notebook](http://ipython.org/notebook.html):
