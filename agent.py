@@ -143,9 +143,6 @@ class Reflex(object):
         self.inhib_act = -30.
 
     def activation(self, amp):
-
-        # return - 0.5
-
         if amp > 0.5:
             self.start_stop = deepcopy(self.t)
         if self.t >= self.start_stop + 4:
@@ -175,16 +172,10 @@ class ModularAgent(Observable):
 
     def produce(self):
         state = self.pres_estimator.presence
-        # if min(state) < 0.7:
-        #     self.comfort = False
         if self.adapt:
             adapt_act = self.decision_maker.decide(state)
         else:
             adapt_act = 0.
-        #     activation += 0.
-        # else:
-        #     self.comfort = True
-        #     activation = -3.
         self.reflex_act = self.reflex.activation(self.amp)
         activation = self.reflex_act + adapt_act
         self.m = self.motor.execute(activation)
@@ -217,14 +208,13 @@ class Agent(Observable):
         self.gmm = gmm
         self.presence = hstack((1., (1. / self.n_ag) * ones(self.n_ag)))
         self.lr = 0.05  # learning rate
-        self.weights = self.lr * randn(self.n_ag + 1) # array([0.0] * (2 * self.n_ag + 1))
+        self.weights = self.lr * randn(self.n_ag + 1)
         self.value_weights = self.lr * randn(self.n_ag + 1)
         self.discount = 0.9
         self.last_time_identified = [0] * self.n_ag
         self.t = 0
-        self.lr_alpha = 0.1 #99  # decaying lr(t) = t ** (-alpha) according to Damas' IML algorithm
-                              # Check if we have sum_t lr(t) == inf and sum_t lr(t)**2 < inf (Eq 21, 22 in Grondman et al.IEEE SMC)
-        # self.topics = ["motor", "presence", "td_error", "activation", "weights"]
+        self.lr_alpha = 0.1 # decaying lr(t) = t ** (-alpha) according to Damas' IML algorithm
+                            # Check if we have sum_t lr(t) == inf and sum_t lr(t)**2 < inf (Eq 21, 22 in Grondman et al.IEEE SMC)
         self.drive_base = 1.
         self.aud_act = 0.
         self.adapt = True
@@ -287,7 +277,7 @@ class Agent(Observable):
         self.aud_act = float(self.t - self.last_voc < 5)
 
         reward = product(self.presence[1:]) #  - 0.5 * (0 if self.m is None else 1)
-        if reward <0: reward = 0
+        if reward < 0: reward = 0
 
         value_prev_state = self.value_weights.dot(prev_presence.T)
         value_current_state = self.value_weights.dot(self.presence.T)
@@ -298,21 +288,6 @@ class Agent(Observable):
             self.value_weights += self.lr * td_error * prev_presence
             self.weights += self.lr * td_error * prev_presence * (-1 if self.m is None else 1) #* self.activation * (1. - self.activation) #  (-1 if self.m is None else 1)
 
-        #self.presence_gradient = float(self.presence > 0.6  - prev_presence > 0.6)
-        #print self.presence_gradient
-
-       #  self.presence_gradient = sum(self.presence - prev_presence)
-        # if all(self.presence > 0.6) > 0:
-        #     self.presence_gradient = 1
-        # elif sum(self.presence > 0.6) - sum(prev_presence > 0.6) > 0:
-        #     self.presence_gradient = 1
-        # else:
-        #     self.presence_gradient = -1
-
-        
-        #self.weights += self.lr * (self.presence_gradient) * \
-        #    hstack((1., self.presence, 1. - prev_presence)) * (-1 if self.m is None else 1)
-        
         self.t += 1
 
         self.emit("presence", (self.id, deepcopy(self.presence)))
@@ -320,4 +295,3 @@ class Agent(Observable):
         self.emit("reward", (self.id, reward))
         self.emit("weights", (self.id, self.weights))
         self.emit("aud_act", (self.id, self.aud_act))
-
