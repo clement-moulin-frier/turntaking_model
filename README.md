@@ -12,6 +12,7 @@ How to use this code is explained in this [IPython notebook](http://ipython.org/
 [Autonomous development of turn-taking behaviors in agent populations: a computational study,](http://nbviewer.ipython.org/github/clement-moulin-frier/turntaking_model/blob/master/turn_taking.ipynb)
 
 that you can either read by clicking on the above link, or run interactively by installing [IPython notebook](http://ipython.org/notebook.html), cloning our repository and:
+
     cd local/path/to/the/repo
     ipython notebook
 
