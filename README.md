@@ -1,6 +1,6 @@
 # Turn-taking model
 
-This repository contains the source code related to the paper we recently submitted at the ICDL-Epirob 2015 conference. 
+This repository contains the source code related to the paper we recently submitted at the ICDL-Epirob 2015 conference. However, this model is currently being further developed in the `master` branch, the version corresponding to the aforementioned paper residing in the `icdl_paper` branch. 
 
 ## Dependency
 To generate the figures of the paper we used the [seaborn library](http://stanford.edu/~mwaskom/software/seaborn/) that you need to install on your system  as well if you want to re-generate them.
