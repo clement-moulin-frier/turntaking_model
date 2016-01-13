@@ -65,7 +65,8 @@ class Reactive(FigureGenerator):
 
     def body(self):
         self.start = 0
-        self.end = 100
+        self.end = self.expe.log_array('motor').shape[1]  # 100
+        self.time = range(self.start, self.end)
         figure(figsize=(10, 8))
         subplot(211)
         plot(tile(self.time, (self.expe.n_ag, 1)).T, self.expe.log_array('activation')[:, self.start:self.end].T, 'o')
@@ -82,7 +83,7 @@ class Reactive(FigureGenerator):
 class Adaptive(FigureGenerator):
     def __init__(self, expe):
         FigureGenerator.__init__(self, expe, scale=2.)
-        self.time_ranges = ((0, 100), (1000, 1100), (10000, 10100))
+        self.time_ranges = ((0, 100), (10000, 10100), (19900, 20000))
 
     def body(self):
         n_col = 3
@@ -112,7 +113,7 @@ class Adaptive(FigureGenerator):
             xlabel("Time")
             if i == 0:
                 ylabel("Acoustic\nfeature")
-            axis([t_min, t_max, -1.2, 0.2])
+            #axis([t_min, t_max, -1.2, 0.2])
 
         subplot(gs[3, :])
         win = 1000
@@ -172,8 +173,8 @@ class RewardStat(object):
         self.n_runs_2ag = len(expe_logs_2ag[0][0]["motor"])
         self.n_runs_3ag = len(expe_logs_3ag[0][0]["motor"])
         self.n_expe = len(expe_logs_2ag)
-        win = 1000
-        self.run_means_2ag = [runningMeanFast(product(array(expe_logs_2ag[i_e][0]['presence']), axis=1), win)[:-win] for i_e in range(self.n_expe)]
+        win = 100
+        self.run_means_2ag = [  runningMeanFast(product(array(expe_logs_2ag[i_e][0]['presence']), axis=1), win)[:-win] for i_e in range(self.n_expe)] 
         self.run_means_2ag = array(self.run_means_2ag)
         self.run_means_3ag = [runningMeanFast(product(array(expe_logs_3ag[i_e][0]['presence']), axis=1), win)[:-win] for i_e in range(self.n_expe)]
         self.run_means_3ag = array(self.run_means_3ag)
