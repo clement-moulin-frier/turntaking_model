@@ -1,6 +1,6 @@
 # Turn-taking model
 
-This repository contains the source code related to the paper we recently submitted at the ICDL-Epirob 2015 conference. 
+This repository contains an update version of the source code related to [our paper pubished at the ICDL-Epirob 2015 conference](http://clement-moulin-frier.github.io/bibliography/moulinfrier2015turntaking/). For the code of the original paper, use the `icdl_2015` branch.
 
 ## Dependency
 To generate the figures of the paper we used the [seaborn library](http://stanford.edu/~mwaskom/software/seaborn/) that you need to install on your system  as well if you want to re-generate them.
