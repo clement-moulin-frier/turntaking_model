@@ -158,7 +158,11 @@ class Agent(Observable):
         self.reflex = Reflex()
         self.motor = MotorExecution(self.ag_voc_param)
         self.amp = 0
+        self.t = 0
         self.adapt = True
+
+        self.force_voc_each = 0
+        self.force_voc_seq = []        
 
     def produce(self):
         state = self.pres_estimator.presence
@@ -168,9 +172,20 @@ class Agent(Observable):
             adapt_act = 0.
         self.reflex_act = self.reflex.activation(self.amp)
         activation = self.reflex_act + adapt_act
+
+        if self.force_voc_each:
+            if not self.t % self.force_voc_each:
+                activation = 1.
+            else:
+                activation = 0.
+        if self.force_voc_seq:
+            activation = 10. if self.force_voc_seq[self.t % len(self.force_voc_seq)] else -10.
+
         self.m = self.motor.execute(activation)
         self.emit("motor", (self.id, deepcopy(self.m)))
         self.emit("activation", (self.id, deepcopy(self.motor.activation)))
+
+        self.t += 1
         return self.m
 
     def perceive(self, signal):
